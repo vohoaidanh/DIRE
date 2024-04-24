@@ -8,7 +8,7 @@ import torch
 
 import sys
 import cv2
-from mpi4py import MPI
+#from mpi4py import MPI
 
 import torch.nn.functional as F
 import torchvision.transforms as transforms
@@ -18,7 +18,7 @@ import torch as th
 import torch.distributed as dist
 
 from guided_diffusion import dist_util, logger
-from guided_diffusion.image_datasets import load_data_for_reverse
+from guided_diffusion.image_datasets import load_data_for_reverse, ImageDataset_for_reverse
 from guided_diffusion.script_util import (
     NUM_CLASSES,
     model_and_diffusion_defaults,
@@ -42,40 +42,53 @@ def reshape_image(imgs: torch.Tensor, image_size: int) -> torch.Tensor:
 def main():
     args = create_argparser().parse_args()
 
-    dist_util.setup_dist(os.environ["CUDA_VISIBLE_DEVICES"])
+    #dist_util.setup_dist(os.environ["CUDA_VISIBLE_DEVICES"])
     logger.configure(dir=args.recons_dir)
 
     os.makedirs(args.recons_dir, exist_ok=True)
     os.makedirs(args.dire_dir, exist_ok=True)
     logger.log(str(args))
-
+#Load model and status dict
     model, diffusion = create_model_and_diffusion(**args_to_dict(args, model_and_diffusion_defaults().keys()))
-    model.load_state_dict(dist_util.load_state_dict(args.model_path, map_location="cpu"))
+    #model.load_state_dict(dist_util.load_state_dict(args.model_path, map_location="cpu"))
+    state_dict = torch.load(args.model_path, map_location='cpu')
+    model.load_state_dict(state_dict['model'])
+    
+    print('loading model to: ',dist_util.dev())
     model.to(dist_util.dev())
+    
     logger.log("have created model and diffusion")
     if args.use_fp16:
         model.convert_to_fp16()
+        
     model.eval()
 
     data = load_data_for_reverse(
         data_dir=args.images_dir, batch_size=args.batch_size, image_size=args.image_size, class_cond=args.class_cond
     )
-    logger.log("have created data loader")
 
+    logger.log("have created data loader")
     logger.log("computing recons & DIRE ...")
     have_finished_images = 0
-    while have_finished_images < args.num_samples:
-        if (have_finished_images + MPI.COMM_WORLD.size * args.batch_size) > args.num_samples and (
-            args.num_samples - have_finished_images
-        ) % MPI.COMM_WORLD.size == 0:
-            batch_size = (args.num_samples - have_finished_images) // MPI.COMM_WORLD.size
-        else:
-            batch_size = args.batch_size
-        all_images = []
-        all_labels = []
-        imgs, out_dicts, paths = next(data)
-        imgs = imgs[:batch_size]
-        paths = paths[:batch_size]
+    
+# =============================================================================
+#     while have_finished_images < args.num_samples:
+#         if (have_finished_images + MPI.COMM_WORLD.size * args.batch_size) > args.num_samples and (
+#             args.num_samples - have_finished_images
+#         ) % MPI.COMM_WORLD.size == 0:
+#             batch_size = (args.num_samples - have_finished_images) // MPI.COMM_WORLD.size
+#         else:
+#             batch_size = args.batch_size
+# =============================================================================
+    all_images = []
+    all_labels = []
+    
+    batch_size = args.batch_size
+    for imgs, out_dicts, paths in data:
+        
+        #imgs, out_dicts, paths = next(data)
+        #imgs = imgs[:batch_size]
+        #paths = paths[:batch_size]
 
         imgs = imgs.to(dist_util.dev())
         model_kwargs = {}
