@@ -83,9 +83,9 @@ def main():
 # =============================================================================
     all_images = []
     all_labels = []
-    
+    from tqdm import tqdm
     batch_size = args.batch_size
-    for imgs, out_dicts, paths in data:
+    for imgs, out_dicts, paths in tqdm(data):
         
         #imgs, out_dicts, paths = next(data)
         #imgs = imgs[:batch_size]
@@ -155,7 +155,7 @@ def main():
                 f"{dire_save_dir}/{fn_save}", cv2.cvtColor(dire[i].cpu().numpy().astype(np.uint8), cv2.COLOR_RGB2BGR)
             )
             cv2.imwrite(f"{recons_save_dir}/{fn_save}", cv2.cvtColor(recons[i].astype(np.uint8), cv2.COLOR_RGB2BGR))
-        logger.log(f"have finished {have_finished_images} samples")
+        #logger.log(f"have finished {have_finished_images} samples")
 
     #dist.barrier()
     logger.log("finish computing recons & DIRE!")
