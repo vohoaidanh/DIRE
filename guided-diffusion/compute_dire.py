@@ -52,7 +52,8 @@ def main():
     model, diffusion = create_model_and_diffusion(**args_to_dict(args, model_and_diffusion_defaults().keys()))
     #model.load_state_dict(dist_util.load_state_dict(args.model_path, map_location="cpu"))
     state_dict = torch.load(args.model_path, map_location='cpu')
-    model.load_state_dict(state_dict['model'])
+    #print(state_dict)
+    model.load_state_dict(state_dict)
     
     print('loading model to: ',dist_util.dev())
     model.to(dist_util.dev())
@@ -129,13 +130,13 @@ def main():
         dire = dire.permute(0, 2, 3, 1)
         dire = dire.contiguous()
 
-        gathered_samples = [th.zeros_like(recons) for _ in range(dist.get_world_size())]
-        dist.all_gather(gathered_samples, recons)  # gather not supported with NCCL
+        gathered_samples = [th.zeros_like(recons) for _ in range(1)]
+        #dist.all_gather(gathered_samples, recons)  # gather not supported with NCCL
 
         all_images.extend([sample.cpu().numpy() for sample in gathered_samples])
         if args.class_cond:
-            gathered_labels = [th.zeros_like(classes) for _ in range(dist.get_world_size())]
-            dist.all_gather(gathered_labels, classes)
+            gathered_labels = [th.zeros_like(classes) for _ in range(1)]
+            #dist.all_gather(gathered_labels, classes)
             all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
         have_finished_images += len(all_images) * batch_size
         # print(th.mean(res.float()))
@@ -156,7 +157,7 @@ def main():
             cv2.imwrite(f"{recons_save_dir}/{fn_save}", cv2.cvtColor(recons[i].astype(np.uint8), cv2.COLOR_RGB2BGR))
         logger.log(f"have finished {have_finished_images} samples")
 
-    dist.barrier()
+    #dist.barrier()
     logger.log("finish computing recons & DIRE!")
 
 

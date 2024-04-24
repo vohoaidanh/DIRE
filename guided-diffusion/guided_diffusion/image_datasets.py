@@ -70,7 +70,7 @@ def load_data_for_reverse(
         random_flip=random_flip,
     )
     logger.log("dataset length: {}".format(dataset.__len__() * 1))
-    return  DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True)
+    return  DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
     
 # =============================================================================
 #     if deterministic:
@@ -142,7 +142,7 @@ def _list_image_files_recursively(data_dir):
     for entry in sorted(bf.listdir(data_dir)):
         full_path = bf.join(data_dir, entry)
         ext = entry.split(".")[-1]
-        if "." in entry and ext.lower() in ["jpg", "jpeg", "png", "gif"]:
+        if "." in entry and ext.lower() in ["jpg", "jpeg", "png", "gif", "webp"]:
             results.append(full_path)
         elif bf.isdir(full_path):
             results.extend(_list_image_files_recursively(full_path))
